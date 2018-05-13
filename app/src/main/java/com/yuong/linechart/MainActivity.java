@@ -3,6 +3,9 @@ package com.yuong.linechart;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
     private LineChartView lineChartView;
 
@@ -15,7 +18,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initData() {
-        float[] data = {60, 80, 70, 90, 110};
+        List<List<Float>> data = new ArrayList<>();
+        List<Float> groupData = new ArrayList<>();
+        groupData.add(60f);
+        groupData.add(80f);
+        groupData.add(70f);
+        groupData.add(90f);
+        groupData.add(90f);
+        data.add(groupData);
         lineChartView.setData(data);
     }
 }

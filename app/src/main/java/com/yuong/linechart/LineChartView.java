@@ -15,12 +15,15 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 
+import java.util.List;
+
 /**
  * Created by yuandong on 2018/5/10.
  */
 
 public class LineChartView extends View {
 
+    private static final String TAG = LineChartView.class.getSimpleName();
     //view宽度
     private int width;
 
@@ -38,6 +41,9 @@ public class LineChartView extends View {
 
     //view边距
     private int padding;
+
+    //圆圈半径
+    private float radius;
 
     //文字画笔
     private Paint textPaint;
@@ -109,7 +115,7 @@ public class LineChartView extends View {
     private String[] labels;
 
     //数据
-    private float[] data;
+    private List<List<Float>> data;
 
 
     public LineChartView(Context context) {
@@ -129,8 +135,10 @@ public class LineChartView extends View {
         //默认
         padding = dp2px(10);
         unit = "(ug/m³)";
+        radius = 15f;
         maxY = Integer.parseInt(yTitles[0]);
         minY = Integer.parseInt(yTitles[yTitles.length - 1]);
+
 
         color = COLOR_NORMAl;
         labels = dayLabels;
@@ -230,6 +238,7 @@ public class LineChartView extends View {
             }
             canvas.drawLine(startX, startY, stopX, startY, linePaint);
         }
+
         //画X轴坐标
         //圆心坐标
         oX = 3 * padding + bounds.width();
@@ -244,30 +253,120 @@ public class LineChartView extends View {
 
         //画标注
         float space = (width - 4 * padding - bounds.width()) / 4;
-        float labelY = oY + bounds2.height() * 2 + 2 * padding;
         textPaint.setTextSize(dp2px(10));
+
+        Rect bounds3 = new Rect();
+        String refer3 = "未测量";
+        textPaint.getTextBounds(refer3, 0, refer3.length(), bounds3);
+        float labelY = oY + bounds2.height() + bounds3.height() + 2 * padding;
+        float labelWidth = 2 * bounds3.width() + padding;
 
         for (int i = 0; i < labels.length; i++) {
             float x = 2 * padding + bounds.width() + space * (i + 1);
-            canvas.drawText(labels[i], x, labelY, textPaint);
+            if (i == 0) {
+                linePaint.setColor(COLOR_NORMAl);
+            } else if (i == 1) {
+                linePaint.setColor(COLOR_ABNORMAl);
+            } else {
+                linePaint.setColor(COLOR_NONE);
+            }
+            linePaint.setStrokeWidth(1);
+            textPaint.setTextAlign(Paint.Align.LEFT);
+            float startX = x - labelWidth / 2;
+            float stopX = startX + bounds3.width();
+            canvas.drawLine(startX, labelY - bounds2.height() / 2, stopX, labelY - bounds2.height() / 2, linePaint);
+            canvas.drawText(labels[i], stopX + padding, labelY, textPaint);
         }
+
 
         if (height == 0) {
             height = (int) (labelY + padding);
             requestLayout();
         }
         //画折线和填充颜色
-        drawPath(canvas);
+        drawPaths(canvas);
+
+
+        drawCircles(canvas);
     }
 
     //TODO
-    private void drawPath(Canvas canvas) {
-        if (data == null || data.length == 0) return;
+    private void drawPaths(Canvas canvas) {
+//        if (data == null || data.length == 0) return;
+//        Point firstPoint = null;
+//        Point lastPoint = null;
+//        double ten = 0;
+//        //计算X轴方向两个点之间的距离
+//        if (data.length > 1) {
+//            for (int i = 0; i < data.length; i++) {
+//                Point point = computePoint(i, data[i]);
+//                if (i == 0) {
+//                    firstPoint = point;
+//                    path.moveTo(point.x, point.y);
+//                    shaderPath.moveTo(point.x, point.y);
+//                } else {
+//                    path.lineTo(point.x, point.y);
+//                    shaderPath.lineTo(point.x, point.y);
+//                    if (i == data.length - 1) {
+//                        lastPoint = point;
+//                        shaderPath.lineTo(point.x, oY);
+//                        shaderPath.lineTo(oX, oY);
+//                        shaderPath.close();
+//                    }
+//                }
+//
+//                //计算正切值
+//                if (i + 1 <= data.length - 1) {
+//                    Point nextPoint = computePoint(i + 1, data[i + 1]);
+//                    double y1 = nextPoint.y - point.y;
+//                    double x1 = nextPoint.x - point.x;
+//                    ten = y1 * 1d / x1;
+//                    Log.e(TAG, "y1 :　" + y1 + " x1 : " + x1 + " ten : " + ten);
+//                }
+//            }
+//            Shader mShader = new LinearGradient(0, 0, 0, getHeight(), color, color & 0x00ffffff, Shader.TileMode.MIRROR);
+//            shaderPaint.setShader(mShader);
+//            //画填充颜色
+//            canvas.drawPath(shaderPath, shaderPaint);
+//            //画折线
+//            pathPaint.setColor(color);
+//            pathPaint.setStrokeWidth(5);
+//            canvas.drawPath(path, pathPaint);
+//        }
+//
+//
+//        //画第一个点
+//        if (firstPoint != null) {
+//            drawSolidCircle(canvas, firstPoint);
+//        }
+//        if (lastPoint != null) {
+//            drawHollowCircle(canvas, lastPoint, -ten, true, false);
+//        }
+        if (data == null || data.size() == 0) return;
+        for (int i = 0; i < data.size(); i++) {
+            List<Float> element = data.get(i);
+            drawLine(canvas, i, element);
+        }
+    }
+
+    //TODO 画圆圈
+    private void drawCircles(Canvas canvas) {
+
+    }
+
+    //TODO 待完成
+    private void drawLine(Canvas canvas, int index, List<Float> data) {
+        if (data == null || data.size() == 0) return;
         Point firstPoint = null;
+        Point lastPoint = null;
+        double startTen = 0;
+        double endTen = 0;
+        double ten = 0;
+
         //计算X轴方向两个点之间的距离
-        if (data.length > 1) {
-            for (int i = 0; i < data.length; i++) {
-                Point point = computePoint(i, data[i]);
+        if (data.size() > 1) {
+            for (int i = 0; i < data.size(); i++) {
+                Point point = computePoint(i, data.get(i));
                 if (i == 0) {
                     firstPoint = point;
                     path.moveTo(point.x, point.y);
@@ -275,10 +374,24 @@ public class LineChartView extends View {
                 } else {
                     path.lineTo(point.x, point.y);
                     shaderPath.lineTo(point.x, point.y);
-                    if (i == data.length - 1) {
+                    if (i == data.size() - 1) {
+                        lastPoint = point;
                         shaderPath.lineTo(point.x, oY);
                         shaderPath.lineTo(oX, oY);
                         shaderPath.close();
+                    }
+                }
+
+                if (i + 1 <= data.size() - 1) {
+                    Point nextPoint = computePoint(i + 1, data.get(i + 1));
+                    double y1 = nextPoint.y - point.y;
+                    double x1 = nextPoint.x - point.x;
+                    Log.e(TAG, "y1 :　" + y1 + " x1 : " + x1);
+                    ten = y1 * 1d / x1;
+                    if (i == 0) {
+                        startTen = -ten;
+                    } else {
+                        endTen = -ten;
                     }
                 }
             }
@@ -290,24 +403,102 @@ public class LineChartView extends View {
             pathPaint.setColor(color);
             pathPaint.setStrokeWidth(5);
             canvas.drawPath(path, pathPaint);
+        } else {
+            //就一个点
+            firstPoint = computePoint(0, data.get(0));
         }
 
-        //圆圈半径
-        float radius = 15;
         //画第一个点
         if (firstPoint != null) {
-            otherPaint.setColor(Color.WHITE);
-            otherPaint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(firstPoint.x, firstPoint.y, radius, otherPaint);
-            otherPaint.setStyle(Paint.Style.STROKE);
-            otherPaint.setColor(color);
-            canvas.drawCircle(firstPoint.x, firstPoint.y, radius, otherPaint);
-            otherPaint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(firstPoint.x, firstPoint.y, radius / 2, otherPaint);
+            if (index == 0) {
+                drawSolidCircle(canvas, firstPoint);
+            } else {
+                if (data.size() > 1) {
+                    drawHollowCircle(canvas, firstPoint, startTen, true, true);
+                } else {
+                    drawHollowCircle(canvas, firstPoint, startTen, false, true);
+                }
+            }
+        }
+
+        if (lastPoint != null) {
+            drawHollowCircle(canvas, lastPoint, endTen, true, false);
         }
     }
 
-    //TODO
+    //画实心圆
+    private void drawSolidCircle(Canvas canvas, Point point) {
+        otherPaint.setColor(Color.WHITE);
+        otherPaint.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(point.x, point.y, radius, otherPaint);
+        otherPaint.setStyle(Paint.Style.STROKE);
+        otherPaint.setColor(color);
+        canvas.drawCircle(point.x, point.y, radius, otherPaint);
+        otherPaint.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(point.x, point.y, radius / 2, otherPaint);
+    }
+
+    /**
+     * 画空心圆
+     * @param canvas
+     * @param point
+     * @param ten
+     * @param offset  是否偏移
+     * @param isFirst
+     */
+    private void drawHollowCircle(Canvas canvas, Point point, double ten, boolean offset, boolean isFirst) {
+        double angle = Math.atan(Math.abs(ten));
+        float x = 0;
+        float y = 0;
+        if (ten > 0) {
+            if (!offset) {
+                x = point.x;
+                y = point.y;
+            } else {
+                if (isFirst) {
+                    x = (float) (point.x - radius * Math.cos(angle));
+                    y = (float) (point.y + radius * Math.sin(angle));
+                } else {
+                    x = (float) (point.x + radius * Math.cos(angle));
+                    y = (float) (point.y - radius * Math.sin(angle));
+                }
+            }
+        } else if (ten == 0) {
+            if (!offset) {
+                x = point.x;
+                y = point.y;
+            } else {
+                if (isFirst) {
+                    x = point.x - radius;
+                    y = point.y;
+                } else {
+                    x = point.x + radius;
+                    y = point.y;
+                }
+            }
+
+        } else {
+            if (!offset) {
+                x = point.x;
+                y = point.y;
+            } else {
+                if (isFirst) {
+                    x = (float) (point.x - radius * Math.cos(angle));
+                    y = (float) (point.y - radius * Math.sin(angle));
+                } else {
+                    x = (float) (point.x + radius * Math.cos(angle));
+                    y = (float) (point.y + radius * Math.sin(angle));
+                }
+            }
+        }
+        otherPaint.setColor(Color.WHITE);
+        otherPaint.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(x, y, radius, otherPaint);
+        otherPaint.setStyle(Paint.Style.STROKE);
+        otherPaint.setColor(Color.parseColor("#D2D2D2"));
+        canvas.drawCircle(x, y, radius, otherPaint);
+    }
+
     private Point computePoint(int index, float value) {
         float distance = xLen / (maxPoints - 1);
         Point point = new Point();
@@ -320,7 +511,8 @@ public class LineChartView extends View {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
     }
 
-    public void setData(float[] data) {
+
+    public void setData(List<List<Float>> data) {
         this.data = data;
         invalidate();
     }
