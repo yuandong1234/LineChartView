@@ -3,6 +3,7 @@ package com.yuong.linechart;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Path;
@@ -15,6 +16,7 @@ import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -69,11 +71,15 @@ public class LineChartView extends View {
     //内部填充画笔
     private Paint shaderPaint;
 
+    //虚线画笔
+    private Paint dashLinePaint;
+
     //折线路径
     private Path path;
 
     //填充路径
     private Path shaderPath;
+
 
     //其他画笔
     private Paint otherPaint;
@@ -97,7 +103,7 @@ public class LineChartView extends View {
     private String[] monthLabels = {"最大值", "最小值", "未测量"};
 
     //X坐标允许画的点的数量
-    private int maxPoints = 5;
+    private int maxPoints = 24 * 60 * 60;
 
     //正常颜色
     private int COLOR_NORMAl = Color.parseColor("#50C647");
@@ -106,7 +112,7 @@ public class LineChartView extends View {
     private int COLOR_ABNORMAl = Color.parseColor("#FF654B");
 
     //为测量
-    private int COLOR_NONE = Color.parseColor("#4C4C4C");
+    private int COLOR_NONE = Color.parseColor("#a5a5a5");
 
     //折线颜色
     private int color;
@@ -114,8 +120,14 @@ public class LineChartView extends View {
     //线条标注
     private String[] labels;
 
+    //虚点集合
+    private List<PointItem> dashPoints;
+
+    //圆圈集合
+    private List<PointItem> circlePoints;
+
     //数据
-    private List<List<Float>> data;
+    private List<List<ViewItem>> mData;
 
 
     public LineChartView(Context context) {
@@ -172,9 +184,19 @@ public class LineChartView extends View {
         otherPaint.setStrokeWidth(3);
         otherPaint.setDither(true);
 
+        dashLinePaint = new Paint();
+        dashLinePaint.setStyle(Paint.Style.STROKE);
+        dashLinePaint.setStrokeWidth(5);
+        dashLinePaint.setAntiAlias(true);
+        dashLinePaint.setColor(COLOR_NONE);
+        DashPathEffect pathEffect = new DashPathEffect(new float[]{10, 10}, 0);
+        dashLinePaint.setPathEffect(pathEffect);
+
         path = new Path();
         shaderPath = new Path();
 
+        dashPoints = new ArrayList<>();
+        circlePoints = new ArrayList<>();
     }
 
     @Override
@@ -252,17 +274,17 @@ public class LineChartView extends View {
         }
 
         //画标注
-        float space = (width - 4 * padding - bounds.width()) / 4;
-        textPaint.setTextSize(dp2px(10));
 
         Rect bounds3 = new Rect();
         String refer3 = "未测量";
         textPaint.getTextBounds(refer3, 0, refer3.length(), bounds3);
         float labelY = oY + bounds2.height() + bounds3.height() + 2 * padding;
-        float labelWidth = 2 * bounds3.width() + padding;
+        float labelWidth = 2 * bounds3.width() + padding / 2;
+        float space = (width - 4 * padding - bounds.width() - 3 * labelWidth) / 4;
+        textPaint.setTextSize(dp2px(10));
 
         for (int i = 0; i < labels.length; i++) {
-            float x = 2 * padding + bounds.width() + space * (i + 1);
+            float x = 2 * padding + bounds.width() + space * (i + 1) + labelWidth * i;
             if (i == 0) {
                 linePaint.setColor(COLOR_NORMAl);
             } else if (i == 1) {
@@ -272,10 +294,10 @@ public class LineChartView extends View {
             }
             linePaint.setStrokeWidth(1);
             textPaint.setTextAlign(Paint.Align.LEFT);
-            float startX = x - labelWidth / 2;
+            float startX = x;
             float stopX = startX + bounds3.width();
             canvas.drawLine(startX, labelY - bounds2.height() / 2, stopX, labelY - bounds2.height() / 2, linePaint);
-            canvas.drawText(labels[i], stopX + padding, labelY, textPaint);
+            canvas.drawText(labels[i], stopX + padding / 2, labelY, textPaint);
         }
 
 
@@ -286,76 +308,55 @@ public class LineChartView extends View {
         //画折线和填充颜色
         drawPaths(canvas);
 
+        //画虚线
+        drawDashPaths(canvas);
 
+        //画圆圈
         drawCircles(canvas);
     }
 
-    //TODO
     private void drawPaths(Canvas canvas) {
-//        if (data == null || data.length == 0) return;
-//        Point firstPoint = null;
-//        Point lastPoint = null;
-//        double ten = 0;
-//        //计算X轴方向两个点之间的距离
-//        if (data.length > 1) {
-//            for (int i = 0; i < data.length; i++) {
-//                Point point = computePoint(i, data[i]);
-//                if (i == 0) {
-//                    firstPoint = point;
-//                    path.moveTo(point.x, point.y);
-//                    shaderPath.moveTo(point.x, point.y);
-//                } else {
-//                    path.lineTo(point.x, point.y);
-//                    shaderPath.lineTo(point.x, point.y);
-//                    if (i == data.length - 1) {
-//                        lastPoint = point;
-//                        shaderPath.lineTo(point.x, oY);
-//                        shaderPath.lineTo(oX, oY);
-//                        shaderPath.close();
-//                    }
-//                }
-//
-//                //计算正切值
-//                if (i + 1 <= data.length - 1) {
-//                    Point nextPoint = computePoint(i + 1, data[i + 1]);
-//                    double y1 = nextPoint.y - point.y;
-//                    double x1 = nextPoint.x - point.x;
-//                    ten = y1 * 1d / x1;
-//                    Log.e(TAG, "y1 :　" + y1 + " x1 : " + x1 + " ten : " + ten);
-//                }
-//            }
-//            Shader mShader = new LinearGradient(0, 0, 0, getHeight(), color, color & 0x00ffffff, Shader.TileMode.MIRROR);
-//            shaderPaint.setShader(mShader);
-//            //画填充颜色
-//            canvas.drawPath(shaderPath, shaderPaint);
-//            //画折线
-//            pathPaint.setColor(color);
-//            pathPaint.setStrokeWidth(5);
-//            canvas.drawPath(path, pathPaint);
-//        }
-//
-//
-//        //画第一个点
-//        if (firstPoint != null) {
-//            drawSolidCircle(canvas, firstPoint);
-//        }
-//        if (lastPoint != null) {
-//            drawHollowCircle(canvas, lastPoint, -ten, true, false);
-//        }
-        if (data == null || data.size() == 0) return;
-        for (int i = 0; i < data.size(); i++) {
-            List<Float> element = data.get(i);
+        if (mData == null || mData.size() == 0) return;
+        circlePoints.clear();
+        dashPoints.clear();
+        for (int i = 0; i < mData.size(); i++) {
+            List<ViewItem> element = mData.get(i);
             drawLine(canvas, i, element);
         }
     }
 
-    //TODO 画圆圈
+    private void drawDashPaths(Canvas canvas) {
+        if (dashPoints == null || dashPoints.size() == 0 || dashPoints.size() == 1) return;
+        for (int i = 0; i < dashPoints.size(); i++) {
+            if (i + 1 <= dashPoints.size() - 1) {
+                PointItem point1 = dashPoints.get(i);
+                PointItem point2 = dashPoints.get(i + 1);
+                if (point2.isFirst) {
+                    Path path = new Path();
+                    path.moveTo(point1.point.x, point1.point.y);
+                    path.lineTo(point2.point.x, point2.point.y);
+                    canvas.drawPath(path, dashLinePaint);
+                }
+            }
+        }
+    }
+
     private void drawCircles(Canvas canvas) {
+        if (circlePoints == null || circlePoints.size() == 0) return;
+        for (int i = 0; i < circlePoints.size(); i++) {
+            PointItem item = circlePoints.get(i);
+            if (i == 0) {
+                //TODO 第一个圆圈要动态改变颜色
+                drawSolidCircle(canvas, item.point);
+            } else {
+                drawHollowCircle(canvas, item.point);
+            }
+        }
 
     }
 
-    //TODO 待完成
-    private void drawLine(Canvas canvas, int index, List<Float> data) {
+    //TODO 动态改变线条的颜色
+    private void drawLine(Canvas canvas, int index, List<ViewItem> data) {
         if (data == null || data.size() == 0) return;
         Point firstPoint = null;
         Point lastPoint = null;
@@ -363,67 +364,111 @@ public class LineChartView extends View {
         double endTen = 0;
         double ten = 0;
 
+        path.reset();
+        shaderPath.reset();
         //计算X轴方向两个点之间的距离
         if (data.size() > 1) {
             for (int i = 0; i < data.size(); i++) {
-                Point point = computePoint(i, data.get(i));
+                Point point = computePoint(data.get(i));
                 if (i == 0) {
                     firstPoint = point;
-                    path.moveTo(point.x, point.y);
-                    shaderPath.moveTo(point.x, point.y);
-                } else {
-                    path.lineTo(point.x, point.y);
-                    shaderPath.lineTo(point.x, point.y);
-                    if (i == data.size() - 1) {
-                        lastPoint = point;
-                        shaderPath.lineTo(point.x, oY);
-                        shaderPath.lineTo(oX, oY);
-                        shaderPath.close();
+                } else if (i == data.size() - 1) {
+                    lastPoint = point;
+                }
+                if (i + 1 <= data.size() - 1) {
+                    ViewItem item = data.get(i + 1);
+                    Point point2 = computePoint(item);
+                    if (item.level == 0) {
+                        color = COLOR_NORMAl;
+                    } else {
+                        color = COLOR_ABNORMAl;
                     }
+
+                    path.reset();
+                    shaderPath.reset();
+                    path.moveTo(point.x, point.y);
+                    path.lineTo(point2.x, point2.y);
+
+                    shaderPath.moveTo(point.x, point.y);
+                    shaderPath.lineTo(point2.x, point2.y);
+                    shaderPath.lineTo(point2.x, oY);
+                    shaderPath.lineTo(point.x, oY);
+                    shaderPath.close();
+
+                    Shader mShader = new LinearGradient(0, 0, 0, getHeight(), color, color & 0x00ffffff, Shader.TileMode.MIRROR);
+                    shaderPaint.setShader(mShader);
+                    //画填充颜色
+                    canvas.drawPath(shaderPath, shaderPaint);
+                    //画折线
+                    pathPaint.setColor(color);
+                    pathPaint.setStrokeWidth(5);
+                    canvas.drawPath(path, pathPaint);
+
                 }
 
+
                 if (i + 1 <= data.size() - 1) {
-                    Point nextPoint = computePoint(i + 1, data.get(i + 1));
+                    Point nextPoint = computePoint(data.get(i + 1));
                     double y1 = nextPoint.y - point.y;
                     double x1 = nextPoint.x - point.x;
                     Log.e(TAG, "y1 :　" + y1 + " x1 : " + x1);
                     ten = y1 * 1d / x1;
                     if (i == 0) {
                         startTen = -ten;
-                    } else {
-                        endTen = -ten;
+                    }
+                }
+                endTen = -ten;
+            }
+        } else {
+            //就一个点
+            firstPoint = computePoint(data.get(0));
+        }
+
+        //添加虚点和圆圈点
+        if (data.size() > 1) {
+            if (index == 0) {
+                if (firstPoint != null) {
+                    PointItem item = new PointItem();
+                    item.point = firstPoint;
+                    item.isFirst = true;
+                    circlePoints.add(item);
+                }
+                if (lastPoint != null) {
+                    Point point = computePoint(lastPoint, endTen, true, false);
+                    PointItem item = new PointItem();
+                    item.point = point;
+                    item.isFirst = false;
+                    dashPoints.add(item);
+                    circlePoints.add(item);
+                }
+            } else {
+                if (firstPoint != null) {
+                    Point point = computePoint(firstPoint, startTen, true, true);
+                    PointItem item = new PointItem();
+                    item.point = point;
+                    item.isFirst = true;
+                    dashPoints.add(item);
+                    circlePoints.add(item);
+                }
+                if (lastPoint != null) {
+                    Point point = computePoint(lastPoint, endTen, true, false);
+                    PointItem item = new PointItem();
+                    item.point = point;
+                    item.isFirst = false;
+                    if (index != mData.size() - 1) {
+                        dashPoints.add(item);
+                        circlePoints.add(item);
                     }
                 }
             }
-            Shader mShader = new LinearGradient(0, 0, 0, getHeight(), color, color & 0x00ffffff, Shader.TileMode.MIRROR);
-            shaderPaint.setShader(mShader);
-            //画填充颜色
-            canvas.drawPath(shaderPath, shaderPaint);
-            //画折线
-            pathPaint.setColor(color);
-            pathPaint.setStrokeWidth(5);
-            canvas.drawPath(path, pathPaint);
         } else {
-            //就一个点
-            firstPoint = computePoint(0, data.get(0));
+            PointItem item = new PointItem();
+            item.point = firstPoint;
+            item.isFirst = true;
+            dashPoints.add(item);
+            circlePoints.add(item);
         }
 
-        //画第一个点
-        if (firstPoint != null) {
-            if (index == 0) {
-                drawSolidCircle(canvas, firstPoint);
-            } else {
-                if (data.size() > 1) {
-                    drawHollowCircle(canvas, firstPoint, startTen, true, true);
-                } else {
-                    drawHollowCircle(canvas, firstPoint, startTen, false, true);
-                }
-            }
-        }
-
-        if (lastPoint != null) {
-            drawHollowCircle(canvas, lastPoint, endTen, true, false);
-        }
     }
 
     //画实心圆
@@ -438,15 +483,36 @@ public class LineChartView extends View {
         canvas.drawCircle(point.x, point.y, radius / 2, otherPaint);
     }
 
+    //画空心圆
+    private void drawHollowCircle(Canvas canvas, Point point) {
+        otherPaint.setColor(Color.WHITE);
+        otherPaint.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(point.x, point.y, radius, otherPaint);
+        otherPaint.setStyle(Paint.Style.STROKE);
+        otherPaint.setColor(COLOR_NONE);
+        canvas.drawCircle(point.x, point.y, radius, otherPaint);
+    }
+
+    //计算坐标
+    private Point computePoint(ViewItem item) {
+        float distance = xLen / (maxPoints - 1);
+        Point point = new Point();
+        point.x = (int) (oX + distance * item.time);
+        point.y = (int) (oY - (item.value - minY) * yLen / (maxY - minY));
+        return point;
+    }
+
     /**
-     * 画空心圆
-     * @param canvas
+     * 计算出偏移的坐标
+     *
      * @param point
      * @param ten
-     * @param offset  是否偏移
+     * @param offset
      * @param isFirst
+     * @return
      */
-    private void drawHollowCircle(Canvas canvas, Point point, double ten, boolean offset, boolean isFirst) {
+    private Point computePoint(Point point, double ten, boolean offset, boolean isFirst) {
+        Point newPoint = new Point();
         double angle = Math.atan(Math.abs(ten));
         float x = 0;
         float y = 0;
@@ -491,20 +557,9 @@ public class LineChartView extends View {
                 }
             }
         }
-        otherPaint.setColor(Color.WHITE);
-        otherPaint.setStyle(Paint.Style.FILL);
-        canvas.drawCircle(x, y, radius, otherPaint);
-        otherPaint.setStyle(Paint.Style.STROKE);
-        otherPaint.setColor(Color.parseColor("#D2D2D2"));
-        canvas.drawCircle(x, y, radius, otherPaint);
-    }
-
-    private Point computePoint(int index, float value) {
-        float distance = xLen / (maxPoints - 1);
-        Point point = new Point();
-        point.x = (int) (oX + distance * index);
-        point.y = (int) (oY - (value - minY) * yLen / (maxY - minY));
-        return point;
+        newPoint.x = (int) x;
+        newPoint.y = (int) y;
+        return newPoint;
     }
 
     private int dp2px(int dp) {
@@ -512,8 +567,13 @@ public class LineChartView extends View {
     }
 
 
-    public void setData(List<List<Float>> data) {
-        this.data = data;
+    public void setData(List<List<ViewItem>> data) {
+        this.mData = data;
         invalidate();
+    }
+
+    public class PointItem {
+        boolean isFirst;
+        Point point;
     }
 }
