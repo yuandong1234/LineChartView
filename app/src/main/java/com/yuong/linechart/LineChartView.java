@@ -26,6 +26,12 @@ import java.util.List;
 public class LineChartView extends View {
 
     private static final String TAG = LineChartView.class.getSimpleName();
+
+    //日
+    public static final int DAY = 0X11;
+    //月
+    public static final int MONTH = 0X12;
+
     //view宽度
     private int width;
 
@@ -93,8 +99,13 @@ public class LineChartView extends View {
     //Y坐标最大值、最小值
     private int maxY, minY;
 
+    //日统计坐标title
+    private String[] dayTitles = {"00:00", "06:00", "12:00", "18:00", "24:00"};
+
+    //月统计坐标title
+    private String[] monthTitles = {"1", "7", "14", "21", "28"};
     //X轴titles
-    private String[] xTitles = {"00:00", "06:00", "12:00", "18:00", "24:00"};
+    private String[] xTitles = dayTitles;
 
     //日统计标注
     private String[] dayLabels = {"正   常", "超   标", "未测量"};
@@ -111,7 +122,13 @@ public class LineChartView extends View {
     //异常颜色
     private int COLOR_ABNORMAl = Color.parseColor("#FF654B");
 
-    //为测量
+    //未测量
+    private int COLOR_MAX = Color.parseColor("#486FC6");
+
+    //最大值
+    private int COLOR_MIN = Color.parseColor("#C2C647");
+
+    //
     private int COLOR_NONE = Color.parseColor("#a5a5a5");
 
     //折线颜色
@@ -119,6 +136,9 @@ public class LineChartView extends View {
 
     //线条标注
     private String[] labels;
+
+    //统计类型(日与月)
+    private int style = DAY;
 
     //虚点集合
     private List<PointItem> dashPoints;
@@ -128,6 +148,9 @@ public class LineChartView extends View {
 
     //数据
     private List<List<ViewItem>> mData;
+
+    //月统计数据
+    private List<List<Float>> mData2;
 
 
     public LineChartView(Context context) {
@@ -274,21 +297,28 @@ public class LineChartView extends View {
         }
 
         //画标注
-
         Rect bounds3 = new Rect();
         String refer3 = "未测量";
+        textPaint.setTextSize(dp2px(10));
         textPaint.getTextBounds(refer3, 0, refer3.length(), bounds3);
         float labelY = oY + bounds2.height() + bounds3.height() + 2 * padding;
         float labelWidth = 2 * bounds3.width() + padding / 2;
         float space = (width - 4 * padding - bounds.width() - 3 * labelWidth) / 4;
-        textPaint.setTextSize(dp2px(10));
 
         for (int i = 0; i < labels.length; i++) {
             float x = 2 * padding + bounds.width() + space * (i + 1) + labelWidth * i;
             if (i == 0) {
-                linePaint.setColor(COLOR_NORMAl);
+                if (style == DAY) {
+                    linePaint.setColor(COLOR_NORMAl);
+                } else {
+                    linePaint.setColor(COLOR_MAX);
+                }
             } else if (i == 1) {
-                linePaint.setColor(COLOR_ABNORMAl);
+                if (style == DAY) {
+                    linePaint.setColor(COLOR_ABNORMAl);
+                } else {
+                    linePaint.setColor(COLOR_MIN);
+                }
             } else {
                 linePaint.setColor(COLOR_NONE);
             }
@@ -296,7 +326,7 @@ public class LineChartView extends View {
             textPaint.setTextAlign(Paint.Align.LEFT);
             float startX = x;
             float stopX = startX + bounds3.width();
-            canvas.drawLine(startX, labelY - bounds2.height() / 2, stopX, labelY - bounds2.height() / 2, linePaint);
+            canvas.drawLine(startX, labelY - bounds3.height() / 2, stopX, labelY - bounds3.height() / 2, linePaint);
             canvas.drawText(labels[i], stopX + padding / 2, labelY, textPaint);
         }
 
@@ -305,14 +335,21 @@ public class LineChartView extends View {
             height = (int) (labelY + padding);
             requestLayout();
         }
-        //画折线和填充颜色
-        drawPaths(canvas);
 
-        //画虚线
-        drawDashPaths(canvas);
+        if (style == DAY) {  //日统计
+            //画折线和填充颜色
+            drawPaths(canvas);
 
-        //画圆圈
-        drawCircles(canvas);
+            //画虚线
+            drawDashPaths(canvas);
+
+            //画圆圈
+            drawCircles(canvas);
+        } else {  //月统计
+            //TODO
+            drawPaths2(canvas);
+        }
+
     }
 
     private void drawPaths(Canvas canvas) {
@@ -322,6 +359,13 @@ public class LineChartView extends View {
         for (int i = 0; i < mData.size(); i++) {
             List<ViewItem> element = mData.get(i);
             drawLine(canvas, i, element);
+        }
+    }
+
+    private void drawPaths2(Canvas canvas) {
+        if (mData2 == null || mData2.size() == 0) return;
+        for (int i = 0; i < mData2.size(); i++) {
+            drawLine2(canvas, i, mData2.get(i));
         }
     }
 
@@ -335,6 +379,7 @@ public class LineChartView extends View {
                     Path path = new Path();
                     path.moveTo(point1.point.x, point1.point.y);
                     path.lineTo(point2.point.x, point2.point.y);
+                    dashLinePaint.setColor(COLOR_NONE);
                     canvas.drawPath(path, dashLinePaint);
                 }
             }
@@ -355,7 +400,6 @@ public class LineChartView extends View {
 
     }
 
-    //TODO 动态改变线条的颜色
     private void drawLine(Canvas canvas, int index, List<ViewItem> data) {
         if (data == null || data.size() == 0) return;
         Point firstPoint = null;
@@ -403,10 +447,7 @@ public class LineChartView extends View {
                     pathPaint.setColor(color);
                     pathPaint.setStrokeWidth(5);
                     canvas.drawPath(path, pathPaint);
-
                 }
-
-
                 if (i + 1 <= data.size() - 1) {
                     Point nextPoint = computePoint(data.get(i + 1));
                     double y1 = nextPoint.y - point.y;
@@ -471,6 +512,85 @@ public class LineChartView extends View {
 
     }
 
+    private void drawLine2(Canvas canvas, int index, List<Float> data) {
+
+        if (data == null || data.size() == 0) return;
+        if (index == 0) {
+            pathPaint.setColor(COLOR_MAX);
+            dashLinePaint.setColor(COLOR_MAX);
+        } else {
+            pathPaint.setColor(COLOR_MIN);
+            dashLinePaint.setColor(COLOR_MIN);
+        }
+        Point firstPoint = null;
+        boolean isReal = false;
+
+        List<Point> dashPoints = new ArrayList<>();
+
+        if (data.size() > 1) {
+            for (int i = 0; i < data.size(); i++) {
+                Point point = computePoint(i, data.get(i));
+                //获得第一个点
+                if (point.y != -1 && firstPoint == null){
+                    firstPoint = point;
+                    isReal = true;
+                }
+
+                //添加画虚线的点
+                if (firstPoint != null) {
+                    if (point.y != -1) {
+                        if (!isReal) {
+                            dashPoints.add(point);
+                        }
+                        isReal = true;
+                    } else {
+                        if (isReal) {
+                            Point lastPoint = computePoint(i - 1, data.get(i - 1));
+                            dashPoints.add(lastPoint);
+                        }
+                        isReal = false;
+                    }
+                }
+
+                //画折线
+                if (i + 1 <= data.size() - 1) {
+                    Point point2 = computePoint(i + 1, data.get(i + 1));
+                    if (point.y != -1 && point2.y != -1) {
+                        Path path = new Path();
+                        path.moveTo(point.x, point.y);
+                        path.lineTo(point2.x, point2.y);
+                        pathPaint.setStrokeWidth(5);
+                        canvas.drawPath(path, pathPaint);
+                    }
+                }
+            }
+
+            //画虚线
+            if (dashPoints.size() > 1) {
+                for (int i = 0; i < dashPoints.size(); i++) {
+                    if (i + 1 <= dashPoints.size() - 1) {
+                        Point point1 = dashPoints.get(i);
+                        Point point2 = dashPoints.get(i + 1);
+                        Path path = new Path();
+                        path.moveTo(point1.x, point1.y);
+                        path.lineTo(point2.x, point2.y);
+                        dashLinePaint.setColor(COLOR_NONE);
+                        canvas.drawPath(path, dashLinePaint);
+                    }
+                }
+            }
+
+        } else {
+            //就一个点
+            Point point = computePoint(0, data.get(0));
+            if (point.y != -1) {
+                firstPoint = point;
+            }
+        }
+
+
+    }
+
     //画实心圆
     private void drawSolidCircle(Canvas canvas, Point point) {
         otherPaint.setColor(Color.WHITE);
@@ -498,7 +618,23 @@ public class LineChartView extends View {
         float distance = xLen / (maxPoints - 1);
         Point point = new Point();
         point.x = (int) (oX + distance * item.time);
+        //TODO 数据值有可能等于0
         point.y = (int) (oY - (item.value - minY) * yLen / (maxY - minY));
+        return point;
+    }
+
+
+    private Point computePoint(int index, Float value) {
+        float distance = xLen / (maxPoints - 1);
+        Point point = new Point();
+        point.x = (int) (oX + distance * index);
+        //TODO 数据值有可能等于0
+        if (value != null) {
+            point.y = (int) (oY - (value - minY) * yLen / (maxY - minY));
+        } else {
+            point.y = -1;
+        }
+
         return point;
     }
 
@@ -562,14 +698,50 @@ public class LineChartView extends View {
         return newPoint;
     }
 
+
     private int dp2px(int dp) {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, getResources().getDisplayMetrics());
     }
 
 
+    public void setUnit(String unit, String[] yTitles) {
+        this.unit = unit;
+        this.yTitles = yTitles;
+        maxY = Integer.parseInt(yTitles[0]);
+        minY = Integer.parseInt(yTitles[yTitles.length - 1]);
+        invalidate();
+    }
+
+    public void setStyle(int style) {
+        this.style = style;
+        switch (style) {
+            case DAY:
+                labels = dayLabels;
+                xTitles = dayTitles;
+                maxPoints = 24 * 60 * 60;
+                break;
+            case MONTH:
+                labels = monthLabels;
+                xTitles = monthTitles;
+                maxPoints = 31;
+                break;
+            default:
+                labels = dayLabels;
+                xTitles = dayTitles;
+                maxPoints = 31;
+                break;
+        }
+        invalidate();
+    }
+
+    //设置数据
     public void setData(List<List<ViewItem>> data) {
         this.mData = data;
         invalidate();
+    }
+
+    public void setData2(List<List<Float>> mData2) {
+        this.mData2 = mData2;
     }
 
     public class PointItem {

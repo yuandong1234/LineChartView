@@ -9,7 +9,7 @@ import java.util.List;
 
 public class DataTool {
 
-    public static List<List<ViewItem>> generateData(){
+    public static List<List<ViewItem>> generateData() {
 
         List<List<ViewItem>> data = new ArrayList<>();
 
@@ -121,6 +121,21 @@ public class DataTool {
         groupData7.add(item17);
 
         data.add(groupData7);
+        return data;
+    }
+
+    public static List<List<Float>> generateData2() {
+        List<List<Float>> data = new ArrayList<>();
+        List<Float> max = new ArrayList<>();
+        max.add(50f);
+        max.add(60f);
+        max.add(80f);
+        max.add(null);
+        max.add(90f);
+        max.add(null);
+        max.add(70f);
+        data.add(max);
+
         return data;
     }
 }
