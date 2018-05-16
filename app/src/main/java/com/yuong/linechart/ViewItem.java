@@ -8,7 +8,7 @@ public class ViewItem {
     /***
      * 数据值
      */
-    public float value;
+    public Float value;
     /**
      * 数据对应的日期
      */
@@ -16,5 +16,5 @@ public class ViewItem {
     /**
      * 数据等级（0:正常;1:异常）
      */
-    public int level=1;
+    public int level;
 }

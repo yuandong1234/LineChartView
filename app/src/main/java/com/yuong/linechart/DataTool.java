@@ -18,6 +18,7 @@ public class DataTool {
         ViewItem item = new ViewItem();
         item.value = 60f;
         item.time = 0;
+        item.level=0;
         groupData.add(item);
         data.add(groupData);
 
@@ -31,6 +32,7 @@ public class DataTool {
         ViewItem item3 = new ViewItem();
         item3.value = 70f;
         item3.time = 4 * 60 * 60;
+        item3.level=1;
         groupData2.add(item3);
 
         ViewItem item4 = new ViewItem();
@@ -41,6 +43,7 @@ public class DataTool {
         ViewItem item5 = new ViewItem();
         item5.value = 90f;
         item5.time = 6 * 60 * 60;
+        item5.level=1;
         groupData2.add(item5);
 
         data.add(groupData2);
@@ -127,14 +130,24 @@ public class DataTool {
     public static List<List<Float>> generateData2() {
         List<List<Float>> data = new ArrayList<>();
         List<Float> max = new ArrayList<>();
-        max.add(50f);
-        max.add(60f);
-        max.add(80f);
+        max.add(90f);
+        max.add(110f);
+        max.add(100f);
         max.add(null);
         max.add(90f);
-        max.add(null);
-        max.add(70f);
+        max.add(110f);
+        max.add(95f);
         data.add(max);
+
+        List<Float> min = new ArrayList<>();
+        min.add(60f);
+        min.add(80f);
+        min.add(70f);
+        min.add(null);
+        min.add(60f);
+        min.add(80f);
+        min.add(65f);
+        data.add(min);
 
         return data;
     }

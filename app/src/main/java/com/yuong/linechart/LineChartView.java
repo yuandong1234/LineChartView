@@ -233,6 +233,8 @@ public class LineChartView extends View {
         }
     }
 
+
+
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
@@ -242,6 +244,7 @@ public class LineChartView extends View {
         textPaint.setTextSize(dp2px(14));
         textPaint.setColor(textColor);
         Rect bounds = new Rect();
+
         String refer = "(ug/m³)";
         textPaint.getTextBounds(refer, 0, refer.length(), bounds);
         float unitX = 2 * padding + bounds.width() / 2;
@@ -330,23 +333,16 @@ public class LineChartView extends View {
             canvas.drawText(labels[i], stopX + padding / 2, labelY, textPaint);
         }
 
-
         if (height == 0) {
             height = (int) (labelY + padding);
             requestLayout();
         }
 
-        if (style == DAY) {  //日统计
-            //画折线和填充颜色
+        if (style == DAY) {
+            //日统计
             drawPaths(canvas);
-
-            //画虚线
-            drawDashPaths(canvas);
-
-            //画圆圈
-            drawCircles(canvas);
-        } else {  //月统计
-            //TODO
+        } else {
+            //月统计
             drawPaths2(canvas);
         }
 
@@ -360,6 +356,10 @@ public class LineChartView extends View {
             List<ViewItem> element = mData.get(i);
             drawLine(canvas, i, element);
         }
+        //画虚线
+        drawDashPaths(canvas);
+        //画圆圈
+        drawCircles(canvas);
     }
 
     private void drawPaths2(Canvas canvas) {
@@ -369,36 +369,6 @@ public class LineChartView extends View {
         }
     }
 
-    private void drawDashPaths(Canvas canvas) {
-        if (dashPoints == null || dashPoints.size() == 0 || dashPoints.size() == 1) return;
-        for (int i = 0; i < dashPoints.size(); i++) {
-            if (i + 1 <= dashPoints.size() - 1) {
-                PointItem point1 = dashPoints.get(i);
-                PointItem point2 = dashPoints.get(i + 1);
-                if (point2.isFirst) {
-                    Path path = new Path();
-                    path.moveTo(point1.point.x, point1.point.y);
-                    path.lineTo(point2.point.x, point2.point.y);
-                    dashLinePaint.setColor(COLOR_NONE);
-                    canvas.drawPath(path, dashLinePaint);
-                }
-            }
-        }
-    }
-
-    private void drawCircles(Canvas canvas) {
-        if (circlePoints == null || circlePoints.size() == 0) return;
-        for (int i = 0; i < circlePoints.size(); i++) {
-            PointItem item = circlePoints.get(i);
-            if (i == 0) {
-                //TODO 第一个圆圈要动态改变颜色
-                drawSolidCircle(canvas, item.point);
-            } else {
-                drawHollowCircle(canvas, item.point);
-            }
-        }
-
-    }
 
     private void drawLine(Canvas canvas, int index, List<ViewItem> data) {
         if (data == null || data.size() == 0) return;
@@ -509,6 +479,41 @@ public class LineChartView extends View {
             dashPoints.add(item);
             circlePoints.add(item);
         }
+    }
+
+    private void drawDashPaths(Canvas canvas) {
+        if (dashPoints == null || dashPoints.size() == 0 || dashPoints.size() == 1) return;
+        for (int i = 0; i < dashPoints.size(); i++) {
+            if (i + 1 <= dashPoints.size() - 1) {
+                PointItem point1 = dashPoints.get(i);
+                PointItem point2 = dashPoints.get(i + 1);
+                if (point2.isFirst) {
+                    path.reset();
+                    path.moveTo(point1.point.x, point1.point.y);
+                    path.lineTo(point2.point.x, point2.point.y);
+                    dashLinePaint.setColor(COLOR_NONE);
+                    canvas.drawPath(path, dashLinePaint);
+                }
+            }
+        }
+    }
+
+    private void drawCircles(Canvas canvas) {
+        if (circlePoints == null || circlePoints.size() == 0) return;
+        for (int i = 0; i < circlePoints.size(); i++) {
+            PointItem item = circlePoints.get(i);
+            if (i == 0) {
+                ViewItem viewItem = mData.get(0).get(0);
+                if (viewItem.level == 0) {
+                    color = COLOR_NORMAl;
+                } else {
+                    color = COLOR_ABNORMAl;
+                }
+                drawSolidCircle(canvas, item.point);
+            } else {
+                drawHollowCircle(canvas, item.point);
+            }
+        }
 
     }
 
@@ -516,12 +521,13 @@ public class LineChartView extends View {
 
         if (data == null || data.size() == 0) return;
         if (index == 0) {
-            pathPaint.setColor(COLOR_MAX);
-            dashLinePaint.setColor(COLOR_MAX);
+            color = COLOR_MAX;
         } else {
-            pathPaint.setColor(COLOR_MIN);
-            dashLinePaint.setColor(COLOR_MIN);
+            color = COLOR_MIN;
         }
+        pathPaint.setColor(color);
+        dashLinePaint.setColor(color);
+
         Point firstPoint = null;
         boolean isReal = false;
 
@@ -531,7 +537,7 @@ public class LineChartView extends View {
             for (int i = 0; i < data.size(); i++) {
                 Point point = computePoint(i, data.get(i));
                 //获得第一个点
-                if (point.y != -1 && firstPoint == null){
+                if (point.y != -1 && firstPoint == null) {
                     firstPoint = point;
                     isReal = true;
                 }
@@ -556,7 +562,7 @@ public class LineChartView extends View {
                 if (i + 1 <= data.size() - 1) {
                     Point point2 = computePoint(i + 1, data.get(i + 1));
                     if (point.y != -1 && point2.y != -1) {
-                        Path path = new Path();
+                        path.reset();
                         path.moveTo(point.x, point.y);
                         path.lineTo(point2.x, point2.y);
                         pathPaint.setStrokeWidth(5);
@@ -565,21 +571,20 @@ public class LineChartView extends View {
                 }
             }
 
-            //画虚线
+            //画虚线和圆圈
             if (dashPoints.size() > 1) {
                 for (int i = 0; i < dashPoints.size(); i++) {
+                    Point point1 = dashPoints.get(i);
                     if (i + 1 <= dashPoints.size() - 1) {
-                        Point point1 = dashPoints.get(i);
                         Point point2 = dashPoints.get(i + 1);
-                        Path path = new Path();
+                        path.reset();
                         path.moveTo(point1.x, point1.y);
                         path.lineTo(point2.x, point2.y);
-                        dashLinePaint.setColor(COLOR_NONE);
                         canvas.drawPath(path, dashLinePaint);
                     }
+                    drawHollowCircle(canvas, point1);
                 }
             }
-
         } else {
             //就一个点
             Point point = computePoint(0, data.get(0));
@@ -587,8 +592,9 @@ public class LineChartView extends View {
                 firstPoint = point;
             }
         }
-
-
+        if (firstPoint != null) {
+            drawSolidCircle(canvas, firstPoint);
+        }
     }
 
     //画实心圆
@@ -628,7 +634,6 @@ public class LineChartView extends View {
         float distance = xLen / (maxPoints - 1);
         Point point = new Point();
         point.x = (int) (oX + distance * index);
-        //TODO 数据值有可能等于0
         if (value != null) {
             point.y = (int) (oY - (value - minY) * yLen / (maxY - minY));
         } else {
@@ -737,11 +742,14 @@ public class LineChartView extends View {
     //设置数据
     public void setData(List<List<ViewItem>> data) {
         this.mData = data;
+        this.mData2 = null;
         invalidate();
     }
 
     public void setData2(List<List<Float>> mData2) {
         this.mData2 = mData2;
+        this.mData = null;
+        invalidate();
     }
 
     public class PointItem {
