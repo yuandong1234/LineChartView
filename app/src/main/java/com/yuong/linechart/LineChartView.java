@@ -12,7 +12,6 @@ import android.graphics.Rect;
 import android.graphics.Shader;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.View;
 
@@ -55,6 +54,9 @@ public class LineChartView extends View {
 
     //文字画笔
     private Paint textPaint;
+
+    //文字矩形（用于确定文字的宽高）
+    private Rect bounds,bounds2,bounds3;
 
     //文字颜色
     private int textColor = Color.parseColor("#313131");
@@ -218,8 +220,14 @@ public class LineChartView extends View {
         path = new Path();
         shaderPath = new Path();
 
+        bounds = new Rect();
+        bounds2 = new Rect();
+        bounds3 = new Rect();
+
         dashPoints = new ArrayList<>();
         circlePoints = new ArrayList<>();
+
+
     }
 
     @Override
@@ -243,7 +251,6 @@ public class LineChartView extends View {
         textPaint.setTextAlign(Paint.Align.CENTER);
         textPaint.setTextSize(dp2px(14));
         textPaint.setColor(textColor);
-        Rect bounds = new Rect();
 
         String refer = "(ug/m³)";
         textPaint.getTextBounds(refer, 0, refer.length(), bounds);
@@ -251,7 +258,6 @@ public class LineChartView extends View {
         float unitY = padding + bounds.height();
         canvas.drawText(unit, unitX, unitY, textPaint);
 
-        Rect bounds2 = new Rect();
         String refer2 = "140";
         textPaint.getTextBounds(refer2, 0, refer2.length(), bounds2);
 
@@ -300,7 +306,6 @@ public class LineChartView extends View {
         }
 
         //画标注
-        Rect bounds3 = new Rect();
         String refer3 = "未测量";
         textPaint.setTextSize(dp2px(10));
         textPaint.getTextBounds(refer3, 0, refer3.length(), bounds3);
@@ -327,9 +332,8 @@ public class LineChartView extends View {
             }
             linePaint.setStrokeWidth(1);
             textPaint.setTextAlign(Paint.Align.LEFT);
-            float startX = x;
-            float stopX = startX + bounds3.width();
-            canvas.drawLine(startX, labelY - bounds3.height() / 2, stopX, labelY - bounds3.height() / 2, linePaint);
+            float stopX = x + bounds3.width();
+            canvas.drawLine(x, labelY - bounds3.height() / 2, stopX, labelY - bounds3.height() / 2, linePaint);
             canvas.drawText(labels[i], stopX + padding / 2, labelY, textPaint);
         }
 
@@ -422,7 +426,7 @@ public class LineChartView extends View {
                     Point nextPoint = computePoint(data.get(i + 1));
                     double y1 = nextPoint.y - point.y;
                     double x1 = nextPoint.x - point.x;
-                    Log.e(TAG, "y1 :　" + y1 + " x1 : " + x1);
+                   // Log.e(TAG, "y1 :　" + y1 + " x1 : " + x1);
                     ten = y1 * 1d / x1;
                     if (i == 0) {
                         startTen = -ten;
